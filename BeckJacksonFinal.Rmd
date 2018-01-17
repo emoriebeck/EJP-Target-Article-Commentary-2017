@@ -1,0 +1,533 @@
+---
+title             : "The Search for a Bridge: Idiographic Personality Networks"
+shorttitle        : "Idiographic Personality Networks"
+
+author: 
+  - name          : "Emorie D Beck"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "1 Brookings St., St. Louis, MO 63130"
+    email         : "edbeck@wustl.edu"
+  - name          : "Joshua J Jackson"
+    affiliation   : "1"
+
+affiliation:
+  - id            : "1"
+    institution   : "Washington University in St. Louis"
+
+author_note: >
+  Emorie D Beck, Department of Psychological and Brain Sciences, Washington University in St. Louis; Joshua J Jackson, Department of Psychological and Brain Sciences, Washington University in St. Louis. 
+
+abstract: >
+  Baumert and colleagues call for the use of research on intraindividual personality processes to understand personality structure and development but do not provide a clear path forward. We argue that research using idiographic personality networks represent one avenue of integration of research on personality processes, structure, and development. Idiographic networks conceive of personality as unique combinations of relationships between psychological processes, including behaviors, emotions, motivation, and affect. To demonstrate, we provide a brief example of the utility of idiographic personality networks in research on personality processes, structure, and development.
+keywords          : "personality, networks, structure, processes, development"
+
+bibliography      : ["r-references.bib"]
+
+figsintext        : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+lineno            : no
+
+lang              : "english"
+class             : "man"
+output            : papaja::apa6_pdf
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+library(tidyverse)
+library(graphicalVAR)
+library(mlVAR)
+library(psych)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, error = FALSE, results = 'hide')
+```
+
+
+We agree with the authors that the future of personality science is the integration of research on personality structure, processes, and development. However, we found their discussion on how this can be achieved was frustratingly vague. Specifically, although the authors discussed the costs of aggregation across different levels of Cattell's data box and the importance of intraindividual processes in understanding personality structure and development, they offered few specific ways for how to move such intraindividual research forward. We believe that the future of such research lies within an idiographic -- person centered -- framework. There have been many calls for increased research in intraindividual personality processes [@cervone_2005; @molenaar_2004], as well as agreement that the identification of these patterns cannot be captured using simple interindividual designs. However, how to select *what* is measured, how often (*when*) to measure it, *where* to measure it, and *how* to model it once data are collected are often not discussed.   
+
+We feel that idiographic approaches to personality assessment can facilitate the integration of structure, process, and development. The current article only hinted at these techniques, which we remedy this by providing a brief example on how idiographic analysis can inform studies of intraindividual processes.  We argue that such an approach allows for minimal aggregation of the data box while retaining a degree of parsimony and conclude with the implications of idiographic techniques in the study of personality processes, structure, and development.
+
+Idiographic personality networks provide a way to assess how personality variables are related to one another within a person. Consider the personality networks in Figure 1 for two subjects, assessed at two time points across two years. [^1]  Each network is built using Experience Sampling [ESM; @larson1983experience] data collected on a single individual across a two-week period. Network nodes represent self-reported behavioral, emotional, motivational, and situational states. The colored nodes are personality items, while the white nodes are other emotional, motivational, or situational states. The edges (or paths) between nodes are regularized partial contemporaneous correlations [@wild_2010; @epskamp_2017], which signify concurrent patterns in the participants' responses -- the tendency for states to occur together. Together, this means that each network aggregates across occasions and time but not behaviors or people.  
+
+
+```{r, eval = T}
+library(qgraph)
+library(graphicalVAR)
+library(mlVAR)
+library(tidyverse)
+library(psych)
+wave1_all <- tbl_df(read.csv("~/Box Sync/network/PAIRS/Wave 1/esm_w1_RENAMED.csv"))
+wave4_all <- tbl_df(read.csv("~/Box Sync/network/PAIRS/Wave 4/esm_w4_RENAMED_all.csv"))
+wave7_all <- tbl_df(read.csv("~/Box Sync/network/PAIRS/Wave 7/esm_w7_RENAMED_all.csv"))
+
+# column names for w1
+varnames <- c("SID", "freq", "hourBlock", "day", "beepvar", "A_rude", "E_quiet", "C_lazy", 
+              "N_relaxed", "N_depressed", "E_outgoing", "A_kind", "C_reliable", "N_worried",
+              "pos_emo", "neg_emo", "authentic", "self_esteem", "happy", "lonely",  
+              "aca_motiv", "around_others", "connected")
+
+# column names for w4 and w7
+varnames_w47 <- c("SID", "freq", "hourBlock", "day", "beepvar", "E_outgoing","E_quiet",
+              "C_lazy","C_reliable", "N_worried","N_relaxed", "N_depressed", "A_rude", "A_kind",
+              "pos_emo", "neg_emo", "authentic", "self_esteem", "happy", "lonely", 
+              "aca_motiv", "around_others", "connected")
+
+#Getting necessary columns
+#Keeping subject ID and all esm.BFI items
+w1 <- wave1_all %>%
+  select(esm.IDnum.w1, esm.PRO01.w1, esm.PRO03.w1, esm.PRO04.w1, esm.PRO05.w1, 
+         matches("BFI"), matches ("NQ"), esm.AGQ13.w1, esm.ST06.w1, esm.ST07.w1,
+         -contains(".1.")) %>%
+  setNames(varnames) # change column names
+w4 <- wave4_all %>%
+  select(esm.IDnum.w4, esm.PRO01.w4, esm.PRO03.w4:esm.PRO05.w4, matches("BFI"), 
+         matches ("NQ"), esm.AGQ13.w4, esm.ST06.w4, esm.ST07.w4) %>%
+  setNames(varnames_w47) %>% # change column names
+  select(one_of(varnames)) # reorder columns
+w7 <- wave7_all %>%
+  select(esm.IDnum.w7, esm.PRO01.w7, esm.PRO03.w7:esm.PRO05.w7, matches("BFI"), 
+         matches ("NQ"), esm.AGQ13.w7, esm.ST06.w7, esm.ST07.w7,
+         -esm.BFI20.w7, -esm.BFI12.w7) %>%
+  setNames(varnames_w47) %>% # change column names
+  select(one_of(varnames)) # reorder columns
+
+# short column names (for plots)
+varnames2 <- c("A\nrude", "E\nquiet", "C\nlazy", "N\nrelaxed", "N\ndepressed", "E\noutgoing", "A\nkind", 
+               "C\nreliable", "N\nworried", "positive\nemotion", "negative\nemotion", "authentic", "self\nesteem", 
+               "happy", "lonely", "academic\nmotiv", "around\nothers", "connected")
+
+# create wave variable before combining data sets.
+w4$Wave <- "4"
+w7$Wave <- "7"
+# merge wave 4 and 7 data sets
+w2 <- w4 %>% full_join(w7)
+
+# retain cases where all personality data are retained
+w1_com <- w1[complete.cases(w1[,c(7:11, 13:23)]),]
+w2_com <- w2[complete.cases(w2[,c(7:11, 13:23)]),]
+
+for (i in unique(w1_com$SID)){
+  mean_A_rude <- mean(w1_com$A_rude[w1_com$SID == i], na.rm = T)
+  w1_com$A_rude[is.na(w1_com$A_rude) & w1_com$SID == i] <- mean_A_rude
+  mean_A_kind <- mean(w1_com$A_kind[w1_com$SID == i], na.rm = T)
+  w1_com$A_kind[is.na(w1_com$A_kind) & w1_com$SID == i] <- mean_A_kind
+}
+
+for (i in unique(w2_com$SID)){
+  mean_A_rude <- mean(w2_com$A_rude[w2_com$SID == i], na.rm = T)
+  w2_com$A_rude[is.na(w2_com$A_rude) & w2_com$SID == i] <- mean_A_rude
+  mean_A_kind <- mean(w2_com$A_kind[w2_com$SID == i], na.rm = T)
+  w2_com$A_kind[is.na(w2_com$A_kind) & w2_com$SID == i] <- mean_A_kind
+}
+
+# for waves 4 and 7, create a variable that combines wave and day of study
+w2_com$waveDay <- paste(w2_com$Wave, w2_com$day, sep = ".")
+
+# Make numeric subject IDs for each df because mlVAR won't run for factors #
+w1_com$SID2 <- as.numeric(as.character(w1_com$SID))
+w2_com$SID2 <- as.numeric(as.character(w2_com$SID))
+
+jitter_fun <- function(df){
+  sd_fun <- function(x){if(sd(x, na.rm = T) == 0) jitter(x, amount = runif(1,0,.05)) else x}
+  df2 <- data.frame(apply(df, 2, sd_fun))
+  colnames(df2) <- colnames(df2)
+  return(df2)
+}
+
+w1_com <- tbl_df(w1_com) %>%
+  group_by(SID) %>%
+  arrange(day, hourBlock) %>%
+  mutate(beepvar3 = seq(1, n(), 1)) %>%
+  ungroup() %>%
+  select(SID, SID2, beepvar3, A_rude:connected) %>%
+  group_by(SID) %>%
+  mutate_if(is.integer, as.numeric) %>%
+  mutate(count = n(), wave = "1") %>%
+  filter(count > 10) 
+w1_test <- w1_com %>%
+  group_by(SID, SID2, count, wave) %>% 
+  nest() %>%
+  mutate(data2 = map(data, jitter_fun)) %>%
+  unnest(data2, .drop = T)
+
+w2_com <- tbl_df(w2_com) %>%
+  group_by(SID) %>%
+  arrange(waveDay, hourBlock) %>%
+  mutate(beepvar3 = seq(1, n(), 1)) %>%
+  ungroup() %>%
+  select(SID, SID2, beepvar3, A_rude:connected) %>%
+  group_by(SID) %>%
+  mutate_if(is.integer, as.numeric) %>%
+  mutate(count = n(), wave = "2") %>%
+  filter(count > 10) 
+w2_test <- w2_com %>%
+  group_by(SID, SID2, count, wave) %>% 
+  nest() %>%
+  mutate(data2 = map(data, jitter_fun)) %>%
+  unnest(data2, .drop = T)
+
+# save those subjects to a vector
+subs2_w1 <- as.character(unique(w1_test$SID))
+subs2_w2 <- as.character(unique(w2_test$SID))
+
+#compute scale scores for BF domains
+#first create the keys by location (the conventional way)
+keys.list <- list(
+  extraversion.esm = c(-1, 6),
+  agreeableness.esm = c(-1, 7),
+  conscientiousness.esm = c(-3, 8),
+  neuroticism.esm = c(-4, 5, 9))
+keys <- make.keys(9,keys.list,item.labels=colnames(w1_com)[6:14])
+
+w1_pop <- w1_com; w2_pop <- w2_com
+
+ncol_w1 <- dim(w1_pop)[2]; ncol_w2 <- dim(w2_pop)[2]
+w1_pop[(ncol_w1 + 1):(ncol_w1 + 4)] <- scoreItems(keys,w1_pop[,6:14],min=1,max=5)$scores
+w2_pop[(ncol_w2 + 1):(ncol_w2 + 4)] <- scoreItems(keys,w2_com[,6:14],min=1,max=5)$scores
+
+colnames(w1_pop)[(ncol_w1 + 1):(ncol_w1 + 4)] <- names(keys.list)
+colnames(w2_pop)[(ncol_w2 + 1):(ncol_w2 + 4)] <- names(keys.list)
+
+esm.composites <- w1_pop %>% mutate(wave = "1") %>% ungroup() %>%
+  select(SID, wave, A_rude:connected, extraversion.esm:neuroticism.esm) %>%
+  full_join(w2_pop %>% mutate(wave = "2") %>%
+              select(SID, wave, A_rude:connected, extraversion.esm:neuroticism.esm)) %>%
+  mutate(SID = as.character(SID)) %>%
+  gather(key = item, value = value, A_rude:neuroticism.esm) %>%
+  group_by(SID, wave, item) %>%
+  summarize(mean = mean(value, na.rm = T)) %>%
+  spread(key = item, value = mean)
+```
+
+```{r, eval = F}
+library(mlVAR)
+fit1_w1 <- mlVAR(w1_test, varnames[6:23], beepvar = "beepvar3", nCores = 3, scale = F,
+                idvar = "SID", contemporaneous = "orthogonal", temporal = "orthogonal")
+fit1_w2 <- mlVAR(w2_test, varnames[6:23], beepvar = "beepvar3", nCores = 3, scale = F,
+                idvar = "SID", contemporaneous = "orthogonal", temporal = "orthogonal")
+save(fit1_w1, fit1_w2, file = "~/Box Sync/network/other projects/EJP Target Article Commentary/mlVAR.RData")
+
+library(graphicalVAR)
+gVAR_fun <- function(x, SID, wave){
+  print(paste(wave, SID))
+  n <- dim(x)[1]
+  gamma <- 0
+  lambda <- seq(.025, .25, .025)
+  x <- x %>% select(A_rude:connected, -SID2, -beepvar3)
+  fit <-
+    graphicalVAR(x, gamma = gamma, maxit.in = 1000, maxit.out = 1000,
+                      lambda_beta = lambda, lambda_kappa = lambda, 
+                      verbose = T, scale = F, centerWithin = F)
+  return(fit)
+}
+
+gVAR_fit <- w1_test %>%
+  full_join(w2_test) %>%
+  filter(!(SID %in% c("10301", "10259", "10128", "97", "10447", "10494", "10267", "10268"))) %>%
+  group_by(SID, wave, count) %>%
+  nest() %>%
+  mutate(gVAR_fit = pmap(list(data, SID, wave), possibly(gVAR_fun, NA_real_)))
+save(gVAR_fit, file = "~/Box Sync/network/other projects/EJP Target Article Commentary/graphicalVAR_allSubs.RData")
+```
+
+```{r, eval = T, results = 'hide'}
+load("~/Box Sync/network/other projects/EJP Target Article Commentary/mlVAR.RData")
+load("~/Box Sync/network/other projects/EJP Target Article Commentary/graphicalVAR_allSubs.RData")
+
+############################################
+############### population #################
+############################################
+sum_fit1_w1        <- summary(fit1_w1)
+sum_fit1_w2        <- summary(fit1_w2)
+
+temporal_effects_w1 <- tbl_df(sum_fit1_w1$temporal) %>% mutate(wave = "1")
+temporal_effects_w2 <- tbl_df(sum_fit1_w2$temporal) %>% mutate(wave = "2")
+
+contemp_effects_w1 <- fit1_w1$results$Theta$pcor$mean
+contemp_effects_w2 <- fit1_w2$results$Theta$pcor$mean
+
+contemp_long_fun <- function(fit, Wave){
+  colnames(fit) <- varnames[6:23]; rownames(fit) <- varnames[6:23]
+  fit <- fit[,order(colnames(fit))]
+  fit <- fit[order(rownames(fit)),]
+  fit[lower.tri(fit, diag = T)] <- NA
+  fit.long <- tbl_df(fit) %>%
+    mutate(Var1 = colnames(.),
+           type = "Contemporaneous", wave = Wave) %>%
+    gather(key = Var2, value = weight, A_kind:self_esteem) %>%
+    filter(!is.na(weight)) %>%
+    unite(var, Var1, Var2, sep = ".", remove = F)
+}
+
+contemp_eff_w1 <- contemp_long_fun(contemp_effects_w1, "1")
+contemp_eff_w2 <- contemp_long_fun(contemp_effects_w2, "2")
+
+cors <- data.frame(
+  comparison = c("W1 v. W2"),
+  type = c("temporal", "contemporaneous"),
+  raw_cor = 
+    c(cor(sum_fit1_w1$temporal$fixed,
+          sum_fit1_w2$temporal$fixed),
+      cor(sum_fit1_w1$contemporaneous$pcor,
+          sum_fit1_w2$contemporaneous$pcor)))
+
+pander::pandoc.table(cors, summary = F, 
+             caption = "Correlations of Temporal Fixed Effects Edges Across Waves")
+
+
+############################################
+############## idiographic #################
+############################################
+
+temp_fun <- function(fit, SID){
+  PDC <- fit$PDC
+  from <- row.names(PDC)
+  PDC.long <- tbl_df(PDC) %>%
+    mutate(from = from, type = "Temporal") %>%
+    gather(key = to, value = weight, A_rude:connected)
+}
+
+contemp_mat_fun <- function(fit){fit$PCC}
+
+contemp_long_fun <- function(fit){
+  PCC <- fit$PCC
+  PCC <- PCC[,order(colnames(PCC))]
+  PCC <- PCC[order(rownames(PCC)),]
+  PCC[lower.tri(PCC, diag = T)] <- NA
+  vars <- rownames(PCC)
+  PCC.long <- tbl_df(PCC) %>%
+    mutate(Var1 = vars,
+           type = "Contemporaneous") %>%
+    gather(key = Var2, value = weight, A_kind:self_esteem) %>%
+    filter(!is.na(weight)) %>%
+    unite(var, Var1, Var2, sep = ".", remove = F)
+}
+
+gVAR_fit <- gVAR_fit %>%
+  filter(!is.na(gVAR_fit)) %>%
+  mutate(temp = map2(gVAR_fit, SID, temp_fun),
+         contemp_mat = map(gVAR_fit, contemp_mat_fun),
+         contemp = map(gVAR_fit, contemp_long_fun))
+
+edge_colors <- RColorBrewer::brewer.pal(8, "Purples")[c(4,6,8)]
+
+idio_plot_fun <- function(data, subject, wave, type){
+  if(type == "Temporal"){data_mod <- data$PDC}
+  else{data_mod <- data$PCC}
+  b5_groups <- list(A = c(1,7), E = c(2, 6), C = c(3,8), N = c(4,5,9), other = 10:18)
+  subject <- ifelse(subject == "10492", "1", "2")
+  plot <- 
+    qgraph(data_mod, layout = "spring", loop = .7, node.width = 1.85, edge.width = 1, esize = 7,
+           title = sprintf("%s Wave %s for S%s", type, wave, subject), label.font = 2, repulsion = .8,
+                   label.fill.vertical = 1, label.fill.horizontal = 1, edge.color = "black",
+                   groups = b5_groups, color = rev(t(RColorBrewer::brewer.pal(9, "Purples")[seq(1,9,2)])),
+                   legend = F, DoNotPlot = TRUE, mar = c(4,4,4,4))
+  #change lines to dashed
+  plot$graphAttributes$Edges$lty[plot$Edgelist$weight < 0] <- 2
+  #change line colors
+  plot$graphAttributes$Edges$color <-
+    ifelse(abs(plot$Edgelist$weight) <.1, edge_colors[1],
+    ifelse(abs(plot$Edgelist$weight) <.2, edge_colors[2], edge_colors[3]))
+  dark_colors <- c("#9E9AC8", "#807DBA", "#6A51A3", "#54278F", "#3F007D")
+  plot$graphAttributes$Nodes$label.color[plot$graphAttributes$Nodes$color %in% dark_colors] <- "white"
+  #change variable names
+  plot$graphAttributes$Nodes$labels <- varnames2
+  return(plot)
+}
+
+gVAR_fit <- gVAR_fit %>%
+  mutate(temp_plot = pmap(list(gVAR_fit, SID, wave, "Temporal"),
+                          possibly(idio_plot_fun, NA_real_)),
+         contemp_plot = pmap(list(gVAR_fit, SID, wave, "Contemporaneous"),
+                          possibly(idio_plot_fun, NA_real_)))
+```
+
+
+```{r results = 'hide', warning = FALSE, message = FALSE, fig.height=7, fig.width=7, fig.cap="Contemporaneous personality networks for two subjects' ESM responses collected one year apart. The colored nodes represent personality items, while the white nodes represent behavioral, emotional, and motivational states. Positive associations (edges) are solid lines, while negative associations are dashed lines."}
+pdf("~/Box Sync/network/other projects/EJP Target Article Commentary/Plot.pdf", width = 8, height = 8)
+par(mfrow = c(2,2))
+gVAR_fit %>%
+filter(SID %in% c("10492", "10432")) %>%
+select(SID, wave, temp_plot, contemp_plot) %>%
+arrange(wave, desc(SID)) %>%
+mutate(map(contemp_plot, plot))
+dev.off()
+```
+
+What can idiographic networks say about personality processes? First, these networks provide a direct indicator of correspondences between behaviors and underlying mechanisms [@epskamp_2017]. For example, in Subject 1's personality network, we see strong associations between feelings of connection to others and other states, including emotions (e.g. "happy"), behaviors (e.g. "outgoing"), and motivations (e.g. "around others"). Second, networks highlight interindividual differences in intraindividual personality structure. Subject 2's motivation to work on academics repels feelings of connectedness to others, while Subject 1's network suggests no such tension. Thus, Subject 2 may struggle to balance academic and social commitments. Subject 1's academic motivation is related only to being more quiet and relaxed, while Subject 2's academic motivation is related to increased worry and decreased kind.ness This opens up new sets of questions: are specific motivational-behavioral links related to positive or negative outcomes? Does the relationship between psychological states change when in different situations (e.g. academic) for different people? 
+
+```{r, eval = T, fig.show='hide'}
+# Temporal: Partial Directed Correlations
+temp_long <- gVAR_fit %>%
+  unnest(temp, .drop = T) %>%
+  mutate(type = "Temporal")
+
+#Contemporaneous: Partial Contemporaneous Correlations
+contemp_long <- gVAR_fit %>%
+  unnest(contemp, .drop = T) %>%
+  mutate(Var1 = factor(Var1, levels = varnames),
+         Var2 = factor(Var2, levels = varnames),
+         SID = factor(SID),
+         type = "Contemporaneous") 
+
+#### network stability ####
+w1_subs <- (gVAR_fit%>% filter(wave == "1"))$SID 
+w2_subs <- (gVAR_fit %>% filter(wave == "2"))$SID
+w1w2_subs <- w1_subs[w1_subs %in% w2_subs]
+
+ip_cors <- temp_long %>%
+  select(SID, wave, from:weight) %>%
+  mutate(SID = factor(SID)) %>%
+  full_join(select(contemp_long, SID, wave, Var1:weight) %>%
+              rename(from = Var1, to = Var2)) %>%
+  filter(SID %in% w1w2_subs) %>%
+  group_by(SID, wave, type) %>%
+  mutate(weight.c = as.numeric(scale(weight, center = T, scale = F))) %>%
+  ungroup() %>%
+  select(-weight) %>%
+  spread(wave, weight.c) %>%
+  group_by(SID, type) %>%
+  summarize(net_r = cor(`1`, `2`, use = "pairwise.complete.obs")) 
+
+sub_ip_cors <- ip_cors %>%
+  filter(SID %in% c("10492", "10432") & type == "Contemporaneous") %>% 
+  arrange(desc(SID))
+
+#### congruence correlations with population networks ####
+profile_cor_fun <- function(id_list, wave){
+  if(any(id_list$type == "Temporal")){
+    if(wave == "1"){pop_list <- temporal_effects_w1} else {pop_list <- temporal_effects_w2}
+    id_list <- id_list %>% select(from, to, type, weight) %>% arrange(from, to)
+    pop_list <- pop_list %>% select(from, to, fixed) %>% arrange(from, to)
+    id_list %>% full_join(pop_list) %>% summarize(r = cor(fixed, weight, use = "pairwise"), type = "Temporal")}
+  else{
+    if(wave == "1"){pop_list <- contemp_eff_w1} else {pop_list <- contemp_eff_w2}
+    id_list <- id_list %>% select(Var1, Var2, weight, type) %>% arrange(Var1, Var2)
+    pop_list <- pop_list %>% select(Var1, Var2, weight, type) %>% arrange(Var1, Var1) %>% rename(pcor = weight)
+    id_list %>% full_join(pop_list) %>% group_by(type) %>% summarize(r = cor(pcor, weight, use = "pairwise"))}}
+
+gVAR_fit <- gVAR_fit %>%
+  mutate(temp_procor = map2(temp, wave, profile_cor_fun),
+         contemp_procor = map2(contemp, wave, profile_cor_fun))
+
+cong_procors <- gVAR_fit %>% unnest(temp_procor, .drop = T) %>%
+  full_join(gVAR_fit %>% unnest(contemp_procor, .drop = T))
+
+cong_procors %>%
+  mutate(SID = as.character(SID)) %>%
+  select(-count) %>%
+  ggplot(aes(x = r)) + 
+    geom_histogram(color = "black", fill = "gray") + 
+    facet_grid(type~wave) + 
+    theme_classic()
+
+cong_sum_stats <- cong_procors %>%
+  group_by(wave, type) %>%
+  summarize(mean = fisherz2r(mean(fisherz(r), na.rm = T)),
+            var = fisherz2r(var(fisherz(r), na.rm = T)),
+            sd = fisherz2r(sd(fisherz(r), na.rm = T)),
+            min = min(r, na.rm = T),
+            max = max(r, na.rm = T))
+
+sub_cong_procors <- cong_procors %>%
+  filter(SID %in% c("10492", "10432") & type == "Contemporaneous") %>%
+  dplyr::select(-count) %>%
+  spread(key = wave, value = r) %>%
+  rename(w1 = `1`, w2 = `2`) %>% 
+  arrange(desc(SID))
+
+```
+
+
+For personality structure, idiographic networks underscore how interindividual differences in intraindividual personality structure may explain interindividual structure. Comparing the congruence of idiographic networks with a population network model reproduces a well-known observation: population models may have little bearing on the individual (i.e. not all people evidence a Big 5 structure). In our sample, congruence between idiographic networks and the population network was sizeable ($M = `r round(cong_sum_stats$mean[1],2)`$). For wave 1, Subjects 1 ($r = `r round(sub_cong_procors$w1[1],2)`$) and 2 ($r = `r round(sub_cong_procors$w1[2],2)`$) in Figure 1 both exhibit strong congruence, but there are also considerable individual differences in congruence across all of our sample ($SD = `r round(cong_sum_stats$sd[1],2)`$, range $`r round(cong_sum_stats$min[1],2)`$ to $`r round(cong_sum_stats$max[1],2)`$). Together, such interindividual differences in intraindividual personality structure evidence what Baumert and colleagues termed "weak emergence" -- macroscopic patterns that emerge out of microscopic processes. But there are substantial individual differences in idiographic structure, which opens new avenues for exploration. Who are the people who fit the population model well and who are those that do not?  
+
+```{r, eval = T, fig.show='hide'}
+#### composite stability ####
+composite_profile_cors <- esm.composites %>%
+  filter(SID %in% w1w2_subs) %>%
+  gather(key = variable, value = rating, A_kind:self_esteem) %>%
+  mutate(type = ifelse(grepl(".esm", variable) == T, "Composite", "Item")) %>%
+  spread(key = wave, value = rating) %>%
+  group_by(SID, type) %>%
+  summarise(nom_r = cor(`1`, `2`, use = "pairwise"))
+
+composite_profile_cors %>%
+  ggplot(aes(x = nom_r)) + 
+  geom_histogram(color = "black", fill = "gray") + 
+  facet_grid(.~type) + 
+  labs(x = "Profile Correlation", y = "Frequency", title = "Profile Correlations of ESM Composites") + 
+  scale_x_continuous(lim = c(0,1), breaks = seq(0,1,.25)) + 
+  theme_bw()
+
+cong_procors %>%
+  mutate(SID = as.character(SID)) %>%
+  select(-count) %>%
+  left_join(composite_profile_cors %>% 
+              ungroup() %>%
+              filter(type == "Item") %>%
+              select(-type)) %>%
+  left_join(ip_cors) %>%
+  gather(key = cortype, value = r_2, nom_r, net_r) %>%
+  filter(type == "Contemporaneous") %>%
+  ggplot(aes(x = r, y = r_2)) +
+    geom_text(aes(label = SID)) +
+    geom_smooth(method = "lm", se = F) +
+    labs(x = "Congruence r", y = "Profile r's") +
+    facet_grid(cortype~wave) +
+    theme_classic()
+
+sub_composite_profile_cors <- composite_profile_cors %>%
+  #full_join(ip_cors %>% rename(r = net_r)) %>%
+  filter(SID %in% c("10492", "10432") & type == "Item") %>%
+  arrange(desc(SID))
+```
+
+
+For personality development, personality networks can track changes in intraindividual personality structure that may not be picked up by typical nomothetic measures of personality [c.f. @BeckJacksonCorrChange]. For example, both Subject's profiles of ESM composite scores were stable over 2 years ($r_{S1} = `r round(sub_composite_profile_cors$nom_r[1],2)`$; $r_{S2} = `r round(sub_composite_profile_cors$nom_r[2],2)`$), but only Subject 1's personality network ($r_{S1} = `r round(sub_ip_cors$net_r[1],2)`$; $r_{S2} = `r round(sub_ip_cors$net_r[2],2)`$) was stable over the same time period -- that is, Subject 1's (but not Subject 2's) stability was reflected both in the network and the aggregate of their behavior. This observation generates new questions about the processes of development. What differentiates people with different patterns of behavioral and network stability? These findings index changes in the relationship among variables, a type of change that is rarely explored in personality development (see @BeckJacksonCondonFull for an exception).
+
+In sum, we agree with Baumert and colleagues that networks are valuable tools for personality scientists, perhaps particularly in the generation of hypotheses in the empirical study of personality processes, structure, and development. Moreover, we agree that there is opportunity to examine these three pillars of research simultaneously. A network perspective personality does not mean throwing out decades of personality research on nomothetic approaches but does mean reframing the language we use to talk about personality traits as well as the explanations of why they occur. We challenge personality researchers to go beyond Baumert and colleagues' theoretical review and implement designs capable of tackling personality structure, processes, and development simultaneously.    
+
+[^1]: The idiographic personality networks were constructed using the procedure outlined in @wild_2010. For a more detailed description, see @BeckJackson. R code for constructing these networks are available on the first author's GitHub.  
+
+
+\newpage
+
+# References
+```{r refs, eval = F}
+r_refs(file = "r-references.bib")
+```
+
+```{r, eval = F, include = F}
+library(koRpus)
+library(wordcountaddin)
+#This function reads a Rmd file and returns the word count
+#It uses the wordcountaddin and koRpus packages
+text_stats_file <- function(rmdFile) {
+  rmd <- file(rmdFile, "rt")
+  text <- readLines(rmd)
+  beg <- which(grepl("We agree", text))[1]
+  text <- text[-c(1:(beg-1))]
+  conText <- ""
+  for (i in text) {
+    conText <- paste(conText, i)
+  }
+  close(rmd)
+  # count words - uses an internal function of the wordcountaddin package
+  return(wordcountaddin:::text_stats_fn_(conText))
+}
+
+# This function renders a Rmd file and prints the word count
+render_and_count <- function(rmdFile) {
+  #rmarkdown::render(rmdFile)
+  n_words <- text_stats_file(rmdFile)$n_words_korp
+  cat("\n\nword count: ", n_words, "\n\n")
+}
+
+render_and_count("~/Box Sync/network/other projects/EJP Target Article Commentary/BeckJacksonFinal.Rmd")
+```
+
+
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
